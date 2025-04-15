@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -24,6 +25,7 @@ func main() {
 
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(UploadDir))))
 
+	http.HandleFunc("/get/", withAuth(handleGet))
 	http.HandleFunc("/upload", withAuth(handleUpload))
 
 	fmt.Println("Server started at " + BaseUrl)
@@ -39,6 +41,32 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+func handleGet(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Use GET", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract filename from path: /get/<filename>
+	// Trim "/get/" from the path
+	filename := strings.TrimPrefix(r.URL.Path, "/get/")
+	if filename == "" || strings.Contains(filename, "..") {
+		http.Error(w, "Invalid filename", http.StatusBadRequest)
+		return
+	}
+
+	filePath := filepath.Join(UploadDir, filename)
+
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	// Serve the file
+	http.ServeFile(w, r, filePath)
 }
 
 func handleUpload(w http.ResponseWriter, r *http.Request) {
