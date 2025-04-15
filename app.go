@@ -19,13 +19,17 @@ const (
 	BaseUrl   = "http://localhost" + Port
 )
 
+var countUploads = 0
+var countGet = 0
+
 func main() {
 
 	os.MkdirAll(UploadDir, os.ModePerm)
 
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(UploadDir))))
 
-	http.HandleFunc("/get/", withAuth(handleGet))
+	// http.HandleFunc("/get/", withAuth(handleGet))
+	http.HandleFunc("/get/", handleGet)
 	http.HandleFunc("/upload", withAuth(handleUpload))
 
 	fmt.Println("Server started at " + BaseUrl)
@@ -65,8 +69,12 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("Serving file:", filePath)
+
 	// Serve the file
 	http.ServeFile(w, r, filePath)
+	countGet++
+	fmt.Println("Total GET requests:", countGet)
 }
 
 func handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -108,4 +116,6 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(fmt.Appendf(nil, `{"url": "%s"}`, url))
 
+	countUploads++
+	fmt.Println("Total uploads:", countUploads)
 }
