@@ -21,6 +21,7 @@ const (
 
 var countUploads = 0
 var countGet = 0
+var countDeleted = 0
 
 func main() {
 
@@ -29,8 +30,9 @@ func main() {
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(UploadDir))))
 
 	// http.HandleFunc("/get/", withAuth(handleGet))
-	http.HandleFunc("/get/", handleGet)
+	http.HandleFunc("/get", handleGet)
 	http.HandleFunc("/upload", withAuth(handleUpload))
+	http.HandleFunc("/delete", handleDelete)
 
 	fmt.Println("Server started at " + BaseUrl)
 	log.Fatal(http.ListenAndServe(Port, nil))
@@ -45,6 +47,39 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+func handleDelete(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Use DELETE", http.StatusMethodNotAllowed)
+		return
+	}
+
+	filename := strings.TrimPrefix(r.URL.Path, "/delete/")
+	if filename == "" || strings.Contains(filename, "..") {
+		http.Error(w, "Invalid filename", http.StatusBadRequest)
+		return
+	}
+
+	filePath := filepath.Join(UploadDir, filename)
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	if err := os.Remove(filePath); err != nil {
+		http.Error(w, "Failed to delete file", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("File deleted:", filename)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("File deleted successfully"))
+
+	countDeleted++
+	fmt.Println("Total deleted files:", countDeleted)
 }
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
