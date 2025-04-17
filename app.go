@@ -31,6 +31,7 @@ func main() {
 
 	// http.HandleFunc("/get/", withAuth(handleGet))
 	http.HandleFunc("/get", handleGet)
+	http.HandleFunc("/get/all", handleGetAll)
 	http.HandleFunc("/upload", withAuth(handleUpload))
 	http.HandleFunc("/delete", handleDelete)
 
@@ -47,6 +48,31 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+func handleGetAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Use GET", http.StatusMethodNotAllowed)
+		return
+	}
+
+	files, err := os.ReadDir(UploadDir)
+	if err != nil {
+		http.Error(w, "Failed to read directory", http.StatusInternalServerError)
+		return
+	}
+
+	var fileList []string
+	for _, file := range files {
+		fileList = append(fileList, file.Name())
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf(`{"files": %v}`, fileList)))
+
+	countGet++
+	fmt.Println("Total GET requests:", countGet)
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request) {
