@@ -14,7 +14,8 @@ import (
 
 const (
 	AuthToken = "secrettoken"
-	UploadDir = "./uploads"
+	// UploadDir = "./uploads"
+	UploadDir = "D:/Code/s3Clone/uploads"
 	Port      = ":4000"
 	BaseUrl   = "http://localhost" + Port
 )
