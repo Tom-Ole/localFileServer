@@ -21,7 +21,7 @@ import (
 
 const (
 	AuthToken     = "secrettoken"
-	UploadDir     = "./uploads" // Changed to relative path for better portability
+	UploadDir     = "./uploads"
 	Port          = ":4000"
 	BaseURL       = "http://localhost" + Port
 	MaxFileSize   = 50 << 20 // 100 MB limit
@@ -30,7 +30,6 @@ const (
 	ConvertToWebP = true     // Enable/disable WebP conversion
 )
 
-// Statistics struct for better organization
 type Stats struct {
 	Uploads int `json:"uploads"`
 	Gets    int `json:"gets"`
@@ -39,7 +38,6 @@ type Stats struct {
 
 var stats Stats
 
-// Response structs for consistent JSON responses
 type UploadResponse struct {
 	URL         string `json:"url"`
 	Filename    string `json:"filename"`
@@ -77,7 +75,6 @@ var startTime time.Time
 func main() {
 	startTime = time.Now()
 
-	// Create upload directory with proper error handling
 	absUploadDir, err := filepath.Abs(UploadDir)
 	if err != nil {
 		log.Fatal("Failed to get absolute path:", err)
@@ -91,10 +88,8 @@ func main() {
 	fmt.Printf("Max file size: %d MB\n", MaxFileSize/(1<<20))
 	fmt.Printf("Max memory for uploads: %d MB\n", MaxMemory/(1<<20))
 
-	// List existing files on startup
 	listExistingFiles(absUploadDir)
 
-	// Create custom server with increased limits
 	server := &http.Server{
 		Addr:           Port,
 		Handler:        loggingMiddleware(http.DefaultServeMux),
@@ -107,7 +102,7 @@ func main() {
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/upload", withAuth(handleUpload))
 	http.HandleFunc("/uploads/", handleServeFile)
-	http.HandleFunc("/get/", handleServeFile) // Alternative endpoint
+	http.HandleFunc("/get/", handleServeFile)
 	http.HandleFunc("/files", handleFileList)
 	http.HandleFunc("/delete/", withAuth(handleDelete))
 	http.HandleFunc("/stats", handleStats)
@@ -175,7 +170,7 @@ func withAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// Root endpoint with API documentation
+
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -200,7 +195,6 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// Unified file serving handler for both /uploads/ and /get/ routes
 func handleServeFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed, "Use GET method")
@@ -235,7 +229,6 @@ func handleServeFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set appropriate headers
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
 	w.Header().Set("Last-Modified", fileInfo.ModTime().UTC().Format(http.TimeFormat))
 
@@ -253,8 +246,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set a reasonable content length limit (with overhead for multipart)
-	maxRequestSize := MaxFileSize + (10 << 20) // Add 10MB for multipart form overhead
+	maxRequestSize := MaxFileSize + (10 << 20) // +10MB for multipart form overhead
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxRequestSize))
 
 	// Parse multipart form with increased memory limit
@@ -303,7 +295,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		convertedSize, err := convertToWebP(file, webpPath, originalExt)
 		if err != nil {
 			fmt.Printf("WebP conversion failed for %s: %v, saving original\n", handler.Filename, err)
-			// Fall back to saving original file
+			// Fallback
 			filename = id + originalExt
 			finalSize = saveOriginalFile(file, filepath.Join(UploadDir, filename))
 		} else {
@@ -472,7 +464,6 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// Helper function to send consistent error responses
 func sendErrorResponse(w http.ResponseWriter, error string, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
@@ -486,7 +477,6 @@ func sendErrorResponse(w http.ResponseWriter, error string, code int, message st
 	json.NewEncoder(w).Encode(response)
 }
 
-// Check if file extension is an image that can be converted
 func isImageFile(ext string) bool {
 	switch ext {
 	case ".jpg", ".jpeg", ".png", ".gif":
